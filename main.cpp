@@ -46,7 +46,49 @@ public:
     }
 };
 
-//class PaintStroke
+class PaintStroke {
+private:
+    int strokeWidth;
+    sf::VertexArray paint;
+    std::vector<sf::Vector2f> offsets = getBrushOffsets();
+public:
+    PaintStroke(int pixelWidth) : strokeWidth(pixelWidth){}
+
+
+    std::vector<sf::Vector2f> getBrushOffsets() {
+        std::vector<sf::Vector2f> offsets;
+        // find center point of brush grid
+        float center = (strokeWidth - 1) / 2.0f;
+        float radius = strokeWidth / 2.0f;
+
+        for (int y = 0; y < strokeWidth; y++) {
+            for (int x = 0; x < strokeWidth ; x++) {
+                // distance formula = sqrt(x^2 + y^2)
+                float dx = x - center;
+                float dy = y - center;
+
+                if ((dx * dx) + (dy * dy) <= (radius * radius)) {
+                    offsets.push_back({static_cast<float>(x), static_cast<float>(y)});
+                }
+            }
+        }
+        return offsets;
+    }
+
+    void strokeOffsets(float mouseDownX, float mouseDownY) {
+        for (auto offset : offsets) {
+            paint.append(sf::Vertex(sf::Vector2f({offset.x + mouseDownX, offset.y + mouseDownY}), sf::Color::Red));
+        }
+    }
+
+    void draw(sf::RenderWindow& window) {
+        window.draw(paint);
+    }
+};
+
+class Color {
+
+};
 int main() {
     //sf::ContextSettings settings;
     //settings.antialiasingLevel = 8;
@@ -57,6 +99,9 @@ int main() {
     window.setMouseCursorVisible(false);
     // initalize cursor object
     Cursor cursor(0.0f, 0.0f);
+    //int pixelWidth;
+    //std::cin >>  pixelWidth;
+    PaintStroke paintStroke(20);
     while (window.isOpen()) {
         sf::Time elapsed = clock.restart();
         float dt = elapsed.asSeconds();
@@ -70,8 +115,16 @@ int main() {
 
                 case sf::Event::MouseMoved:
                     cursor.update(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
+                    break;
+            }
+            if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+
+                paintStroke.strokeOffsets(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y));
             }
             window.clear();
+            paintStroke.draw(window);
+            // draw cursor last so it appears on top of canvas
             cursor.draw(window);
             window.display();
         }
