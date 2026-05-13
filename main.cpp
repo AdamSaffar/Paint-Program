@@ -1,6 +1,7 @@
 #include <iostream>
 #include <SFML/graphics.hpp>
 #include <vector>
+#include <cmath>
 class Cursor {
 private:
     float lastMouseX;
@@ -117,11 +118,28 @@ int main() {
                     cursor.update(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
                     break;
             }
+            sf::Vector2f currentPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+            static sf::Vector2f lastPos = currentPos; // Keep track of the previous frame
             if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                sf::Vector2f diff = currentPos - lastPos;
+                float distance = std::sqrt((diff.x * diff.x) + (diff.y * diff.y));
 
-                paintStroke.strokeOffsets(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y));
+                // if the distance between the last frame and the current frame is greater than 1.5 -> interpolate(fill in empty space)
+                if (distance > 1.0f) {
+                    int steps = static_cast<int>(distance);
+                    for (int i = 0; i < steps; ++i) {
+                        float t = (float)i / steps;
+                        // linear interpolation formula = a + t * (b-a)
+                        float x = lastPos.x + t * diff.x;
+                        float y = lastPos.y + t * diff.y;
+
+                        paintStroke.strokeOffsets(x,y);
+                    }
+                } else {
+                    paintStroke.strokeOffsets(currentPos.x, currentPos.y);
+                }
             }
+            lastPos = currentPos;
             window.clear();
             paintStroke.draw(window);
             // draw cursor last so it appears on top of canvas
