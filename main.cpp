@@ -4,9 +4,8 @@
 #include <cmath>
 class Cursor {
 private:
-    float lastMouseX;
-    float lastMouseY;
-
+    sf::ConvexShape cursorShape;
+    /*
     sf::VertexArray customPointer{sf::LineStrip};
 
     const std::vector<sf::Vector2f> shapeOffSets = {
@@ -14,21 +13,33 @@ private:
         {58.0f,170.66f}, {87.66f, 154.0f}, {68.0f, 106.33f},
         {106.33f, 106.33f}, {0.0f, 0.0f}
     };
-    /*
-    sf::Vertex points[] = {
-        sf::Vertex(sf::Vector2f(100.f,100.f), sf::Color::Red),
-        sf::Vertex(sf::Vector2f(100.f,200.f), sf::Color::Blue),
-        sf::Vertex(sf::Vector2f(300.f,100.f), sf::Color::Green)
-    };
     */
 
 public:
-    Cursor(float mX, float mY) : lastMouseX(mX), lastMouseY(mY) {
+    Cursor() {
+        cursorShape.setPointCount(7);
+
+        cursorShape.setPoint(0, sf::Vector2f(0.0f, 0.0f));
+        cursorShape.setPoint(1,sf::Vector2f(0.0f,144.33f));
+        cursorShape.setPoint(2, sf::Vector2f(35.0f, 120.33f));
+        cursorShape.setPoint(3, sf::Vector2f(58.0f,170.66f));
+        cursorShape.setPoint(4, sf::Vector2f(87.66f, 154.0f));
+        cursorShape.setPoint(5, sf::Vector2f(68.0f,106.33f));
+        cursorShape.setPoint(6, sf::Vector2f(106.33f, 106.33f));
+
+        //Styling
+        cursorShape.setFillColor(sf::Color::Transparent);
+        cursorShape.setOutlineColor(sf::Color::Black);
+        cursorShape.setOutlineThickness(3.0f);
+        /*
         for (const auto &offset : shapeOffSets) {
             customPointer.append(sf::Vertex(sf::Vector2f(mX + offset.x, mY + offset.y), sf::Color::Black));
         }
+        */
     }
     void update(float newX, float newY) {
+        cursorShape.setPosition(newX, newY);
+        /*
         float dx = newX - lastMouseX;
         float dy = newY - lastMouseY;
 
@@ -40,10 +51,11 @@ public:
         // update lastMouse x and y
         lastMouseX = newX;
         lastMouseY = newY;
+        */
     }
 
     void draw(sf::RenderWindow& window) {
-        window.draw(customPointer);
+        window.draw(cursorShape);
     }
 };
 
@@ -124,7 +136,7 @@ int main() {
     // This hides the default Windows/macOS arrow
     window.setMouseCursorVisible(false);
     // initalize cursor object
-    Cursor cursor(0.0f, 0.0f);
+    Cursor cursor;
     //int pixelWidth;
     //std::cin >>  pixelWidth;
     PaintStroke paintStroke(20, Desktop.width, Desktop.height);
