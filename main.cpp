@@ -2,6 +2,26 @@
 #include <SFML/graphics.hpp>
 #include <vector>
 #include <cmath>
+#include <thread>
+#include <atomic>
+
+// atomic variable that both threads can see
+std::atomic<int> globalStrokeWidth(20);
+// function will run on the second thread
+void inputListener() {
+    int newWidth;
+    while (true) {
+        std::cout << "Enter new pixel width(1-50): ";
+        if (std::cin >> newWidth) {
+            if (newWidth >= 1 && newWidth <= 50) {
+                globalStrokeWidth = newWidth;
+            } else {
+                std::cout << "Invalid pixel width" <<'\n';
+            }
+
+        }
+    }
+}
 class Cursor {
 private:
     sf::ConvexShape cursorShape;
@@ -20,12 +40,12 @@ public:
         cursorShape.setPointCount(7);
 
         cursorShape.setPoint(0, sf::Vector2f(0.0f, 0.0f));
-        cursorShape.setPoint(1,sf::Vector2f(0.0f,144.33f));
-        cursorShape.setPoint(2, sf::Vector2f(35.0f, 120.33f));
-        cursorShape.setPoint(3, sf::Vector2f(58.0f,170.66f));
-        cursorShape.setPoint(4, sf::Vector2f(87.66f, 154.0f));
-        cursorShape.setPoint(5, sf::Vector2f(68.0f,106.33f));
-        cursorShape.setPoint(6, sf::Vector2f(106.33f, 106.33f));
+        cursorShape.setPoint(1,sf::Vector2f(0.0f,72.16f));
+        cursorShape.setPoint(2, sf::Vector2f(17.5f, 60.16f));
+        cursorShape.setPoint(3, sf::Vector2f(29.0f,85.33f));
+        cursorShape.setPoint(4, sf::Vector2f(43.83f, 77.0f));
+        cursorShape.setPoint(5, sf::Vector2f(34.0f,53.16f));
+        cursorShape.setPoint(6, sf::Vector2f(53.16f, 53.16f));
 
         //Styling
         cursorShape.setFillColor(sf::Color::Transparent);
@@ -120,6 +140,16 @@ public:
         }
     }
     */
+    void updateWidth(int newWidth) {
+        strokeWidth = newWidth;
+        // update brush
+        brush.setRadius(strokeWidth / 2.0f);
+        brush.setOrigin(strokeWidth / 2.0f, strokeWidth / 2.0f); // center brush
+
+    }
+    int getStrokeWidth() const  {
+        return strokeWidth;
+    }
 };
 
 class Color {
@@ -137,9 +167,11 @@ int main() {
     window.setMouseCursorVisible(false);
     // initalize cursor object
     Cursor cursor;
-    //int pixelWidth;
-    //std::cin >>  pixelWidth;
-    PaintStroke paintStroke(20, Desktop.width, Desktop.height);
+    // start input thread
+    std::thread inputThread(inputListener);
+    inputThread.detach(); // let it run independently of the main loop
+
+    PaintStroke paintStroke(globalStrokeWidth, Desktop.width, Desktop.height);
     while (window.isOpen()) {
         sf::Time elapsed = clock.restart();
         float dt = elapsed.asSeconds();
@@ -154,6 +186,10 @@ int main() {
                 case sf::Event::MouseMoved:
                     cursor.update(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
                     break;
+            }
+
+            if (paintStroke.getStrokeWidth() != globalStrokeWidth) {
+                paintStroke.updateWidth(globalStrokeWidth);
             }
             sf::Vector2f currentPos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
             static sf::Vector2f lastPos = currentPos; // Keep track of the previous frame
