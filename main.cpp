@@ -11,7 +11,7 @@ private:
 
     const std::vector<sf::Vector2f> shapeOffSets = {
         {0.0f, 0.0f}, {0.0f, 144.33f}, {35.0f, 120.33f},
-        {58.0f,170.66f}, {87.66f, 154.0f}, {68.0f, 108.0f},
+        {58.0f,170.66f}, {87.66f, 154.0f}, {68.0f, 106.33f},
         {106.33f, 106.33f}, {0.0f, 0.0f}
     };
     /*
@@ -25,7 +25,7 @@ private:
 public:
     Cursor(float mX, float mY) : lastMouseX(mX), lastMouseY(mY) {
         for (const auto &offset : shapeOffSets) {
-            customPointer.append(sf::Vertex(sf::Vector2f(mX + offset.x, mY + offset.y), sf::Color::White));
+            customPointer.append(sf::Vertex(sf::Vector2f(mX + offset.x, mY + offset.y), sf::Color::Black));
         }
     }
     void update(float newX, float newY) {
@@ -50,12 +50,25 @@ public:
 class PaintStroke {
 private:
     int strokeWidth;
-    sf::VertexArray paint;
-    std::vector<sf::Vector2f> offsets = getBrushOffsets();
+    sf::RenderTexture canvas; // drawing surface
+    sf::Sprite canvasSprite; // used to display texture on the window
+    sf::CircleShape brush;
+    //sf::VertexArray paint;
+    //std::vector<sf::Vector2f> offsets = getBrushOffsets();
 public:
-    PaintStroke(int pixelWidth) : strokeWidth(pixelWidth){}
+    PaintStroke(int pixelWidth, int windowWidth, int windowHeight) : strokeWidth(pixelWidth) {
+        // initalize canvas
+        if (!canvas.create(windowWidth, windowHeight)) {
+            // Error
+        }
+        canvas.clear(sf::Color::Transparent);
 
+        brush.setRadius(strokeWidth / 2.0f);
+        brush.setFillColor(sf::Color::Red);
+        brush.setOrigin(strokeWidth / 2.0f, strokeWidth / 2.0f); // center brush
+    }
 
+    /*
     std::vector<sf::Vector2f> getBrushOffsets() {
         std::vector<sf::Vector2f> offsets;
         // find center point of brush grid
@@ -76,15 +89,25 @@ public:
         return offsets;
     }
 
+
+    */
+    void paintAt(float x, float y) {
+        brush.setPosition(x,y);
+        canvas.draw(brush); // draw the brush onto the texture
+        canvas.display();
+    }
+
+    void draw(sf::RenderWindow& window) {
+        canvasSprite.setTexture(canvas.getTexture());
+        window.draw(canvasSprite);
+    }
+    /*
     void strokeOffsets(float mouseDownX, float mouseDownY) {
         for (auto offset : offsets) {
             paint.append(sf::Vertex(sf::Vector2f({offset.x + mouseDownX, offset.y + mouseDownY}), sf::Color::Red));
         }
     }
-
-    void draw(sf::RenderWindow& window) {
-        window.draw(paint);
-    }
+    */
 };
 
 class Color {
@@ -93,7 +116,9 @@ class Color {
 int main() {
     //sf::ContextSettings settings;
     //settings.antialiasingLevel = 8;
-    sf::RenderWindow window(sf::VideoMode::getDesktopMode(), "Paint");
+    sf::VideoMode Desktop = sf::VideoMode::getDesktopMode();
+    sf::RenderWindow window(Desktop, "Paint");
+
     window.setVerticalSyncEnabled(true);
     sf::Clock clock;
     // This hides the default Windows/macOS arrow
@@ -102,7 +127,7 @@ int main() {
     Cursor cursor(0.0f, 0.0f);
     //int pixelWidth;
     //std::cin >>  pixelWidth;
-    PaintStroke paintStroke(20);
+    PaintStroke paintStroke(20, Desktop.width, Desktop.height);
     while (window.isOpen()) {
         sf::Time elapsed = clock.restart();
         float dt = elapsed.asSeconds();
@@ -124,24 +149,26 @@ int main() {
                 sf::Vector2f diff = currentPos - lastPos;
                 float distance = std::sqrt((diff.x * diff.x) + (diff.y * diff.y));
 
-                // if the distance between the last frame and the current frame is greater than 1.5 -> interpolate(fill in empty space)
-                if (distance > 1.0f) {
-                    int steps = static_cast<int>(distance);
+                float spacing = 20 * 0.1f; // 10% spacing
+                if (spacing < 1.0f) spacing = 1.0f;
+                // if the distance between the last frame and the current frame is greater than 1.0 -> interpolate(fill in empty space)
+                if (distance > spacing) {
+                    int steps = static_cast<int>(distance / spacing);
                     for (int i = 0; i < steps; ++i) {
                         float t = (float)i / steps;
                         // linear interpolation formula = a + t * (b-a)
                         float x = lastPos.x + t * diff.x;
                         float y = lastPos.y + t * diff.y;
 
-                        paintStroke.strokeOffsets(x,y);
+                        paintStroke.paintAt(x,y);
                     }
                 } else {
-                    paintStroke.strokeOffsets(currentPos.x, currentPos.y);
+                    paintStroke.paintAt(currentPos.x, currentPos.y);
                 }
             }
             lastPos = currentPos;
-            window.clear();
-            paintStroke.draw(window);
+            window.clear(sf::Color::White);
+            paintStroke.draw(window); // draws 1 sprite
             // draw cursor last so it appears on top of canvas
             cursor.draw(window);
             window.display();
