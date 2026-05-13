@@ -4,24 +4,10 @@
 #include <cmath>
 #include <thread>
 #include <atomic>
-
+#include <map>
+#include <string>
 // atomic variable that both threads can see
 std::atomic<int> globalStrokeWidth(20);
-// function will run on the second thread
-void inputListener() {
-    int newWidth;
-    while (true) {
-        std::cout << "Enter new pixel width(1-50): ";
-        if (std::cin >> newWidth) {
-            if (newWidth >= 1 && newWidth <= 50) {
-                globalStrokeWidth = newWidth;
-            } else {
-                std::cout << "Invalid pixel width" <<'\n';
-            }
-
-        }
-    }
-}
 class Cursor {
 private:
     sf::ConvexShape cursorShape;
@@ -150,11 +136,50 @@ public:
     int getStrokeWidth() const  {
         return strokeWidth;
     }
+
+    void setColor(sf::Color newColor) {
+        brush.setFillColor(newColor);
+    }
 };
 
 class Color {
+private:
+    std::map<std::string, sf::Color> colorMap;
 
+public:
+    Color() {
+        // common color names
+        colorMap["red"] = sf::Color::Red;
+        colorMap["blue"] = sf::Color::Blue;
+        colorMap["green"] = sf::Color::Green;
+        colorMap["black"] = sf::Color::Black;
+        colorMap["yellow"] = sf::Color::Yellow;
+        colorMap["white"] = sf::Color::White;
+
+    }
+
+    sf::Color getColor(std::string input) {
+        // set input string to lowercase
+        std::transform(input.begin(), input.end(), input.begin( ), ::tolower);
+        // check if its a name
+        if (colorMap.count(input)) {
+            return colorMap[input];
+        }
+        // Hex code format: #RRGGBB
+        if (input[0] == '#' && input.length() == 7) {
+
+            // std::stoul converts string to a number
+            unsigned int r = std::stoul(input.substr(1,2), nullptr, 16); // first two nums represent Red
+            unsigned int g = std::stoul(input.substr(3,2), nullptr, 16); // next two nums represent Green
+            unsigned int b = std::stoul(input.substr(5,2), nullptr, 16); // Last two nums represent Blue
+            return sf::Color(r,g,b);
+        }
+        return sf::Color::White; // garbage color value entered
+
+    }
 };
+// function will run on the second thread
+void inputListener(PaintStroke&, Color&);
 int main() {
     //sf::ContextSettings settings;
     //settings.antialiasingLevel = 8;
@@ -167,11 +192,12 @@ int main() {
     window.setMouseCursorVisible(false);
     // initalize cursor object
     Cursor cursor;
-    // start input thread
-    std::thread inputThread(inputListener);
-    inputThread.detach(); // let it run independently of the main loop
-
+    Color c;
     PaintStroke paintStroke(globalStrokeWidth, Desktop.width, Desktop.height);
+
+    // start input thread
+    std::thread inputThread(inputListener, std::ref(paintStroke), std::ref(c));
+    inputThread.detach(); // let it run independently of the main loop
     while (window.isOpen()) {
         sf::Time elapsed = clock.restart();
         float dt = elapsed.asSeconds();
@@ -185,6 +211,18 @@ int main() {
 
                 case sf::Event::MouseMoved:
                     cursor.update(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
+                    break;
+
+                case sf::Event::KeyPressed:
+                    if (event.key.code == sf::Keyboard::Up) {
+                        if (globalStrokeWidth < 200) {
+                            ++globalStrokeWidth;
+                        }
+                    } else if (event.key.code == sf::Keyboard::Down) {
+                        if (globalStrokeWidth > 1) {
+                            --globalStrokeWidth;
+                        }
+                    }
                     break;
             }
 
@@ -223,4 +261,25 @@ int main() {
         }
     }
     return 0;
+}
+
+// function will run on the second thread
+void inputListener(PaintStroke& stroke, Color& c) {
+    std::string input;
+    while (true) {
+        std::cout << "Enter new pixel width(1-200) // Enter new brush color(Hex Value or Color Name) // Eraser: ";
+        std::cin >> input;
+        if (std::isdigit(input[0])) {
+            int newWidth = std::stoi(input);
+            if (newWidth >= 1 && newWidth <= 200) {
+                globalStrokeWidth = newWidth;
+            } else {
+                std::cout << "Invalid pixel width" <<'\n';
+            }
+        } else if (input == "Eraser" || input == "eraser") {
+            stroke.setColor(sf::Color::White); // Set color same as canvas
+        } else {
+            stroke.setColor(c.getColor(input));
+        }
+    }
 }
